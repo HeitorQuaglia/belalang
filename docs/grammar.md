@@ -29,7 +29,7 @@ top_level_decl  ::= fn_decl
 ## 2. Declarações de Variáveis
 
 ```ebnf
-var_decl        ::= ("val" | "mut val" | "const") IDENT (":" type)? "=" expr ";"
+var_decl        ::= "static"? ("val" | "mut val" | "const") IDENT (":" type)? "=" expr ";"
 
 type_alias      ::= "type" IDENT "=" type ";"
 ```
@@ -43,7 +43,10 @@ type            ::= primitive_type
                   | nullable_type
                   | generic_type
                   | optional_type
+                  | result_type
                   | IDENT
+
+result_type     ::= "result" "<" type "," type ">"
 
 range_type      ::= "range" "<" type ">"
 
@@ -143,8 +146,6 @@ stmt            ::= var_decl
                   | for_stmt
                   | loop_stmt
                   | return_stmt
-                  | throw_stmt
-                  | try_stmt
                   | break_stmt
                   | continue_stmt
                   | unsafe_stmt
@@ -161,7 +162,6 @@ lvalue          ::= IDENT
 
 expr_stmt       ::= expr ";"
 return_stmt     ::= "return" expr? ";"
-throw_stmt      ::= "throw" expr ";"
 unsafe_stmt     ::= "unsafe" block
 ```
 
@@ -180,9 +180,6 @@ loop_stmt       ::= "loop" block
 
 for_stmt        ::= "for" "(" IDENT "in" (expr | range_expr) ")" block
 
-try_stmt        ::= "try" block
-                    ("catch" "(" IDENT ":" type ")" block)*
-                    ("finally" block)?
 ```
 
 ---
@@ -235,10 +232,12 @@ primary_expr    ::= literal
                   | alloc_expr
                   | "(" expr ")"
                   | await_expr
+                  | try_expr
                   | match_expr
                   | lambda
 
 await_expr      ::= "await" expr
+try_expr        ::= "try" expr              (* desembrulha result.OK ou faz early return do result.ERROR *)
 alloc_expr      ::= "alloc" "<" type ">" "(" arg_list? ")"
 
 arg_list        ::= expr ("," expr)*
@@ -491,7 +490,7 @@ pattern_list        ::= pattern ("," pattern)*
 val result = match i {
     1..5 => "pequeno",
     10 => "dez",
-    _ => throw error("valor inesperado")
+    _ => "inesperado"
 }
 ```
 
@@ -528,7 +527,64 @@ val msg: string = match status {
 
 ---
 
-## ⚠️ Em Aberto / A Decidir
+## 18. Result
+
+`result<T, E>` representa uma operação que pode ter sucesso (`OK`) ou falhar (`ERROR`). Substitui exceptions — erros são valores.
+
+```ebnf
+result_type     ::= "result" "<" type "," type ">"
+```
+
+`result` é um enum built-in com dois variantes:
+
+```
+// equivalente conceitual:
+enum result<T, E> {
+    OK(T),
+    ERROR(E)
+}
+```
+
+### Criação
+
+```
+fn divide(a: int, b: int): result<int, string> {
+    if (b == 0) {
+        return result.ERROR("divisão por zero")
+    }
+    return result.OK(a / b)
+}
+```
+
+### Consumo com `match`
+
+```
+val res = divide(10, 0)
+match res {
+    result.OK(value) => print("$value"),
+    result.ERROR(err) => print("erro: $err")
+}
+```
+
+### Consumo com `??` (fallback)
+
+```
+val value = divide(10, 0) ?? -1    // -1 se ERROR
+```
+
+### Propagação com `try`
+
+`try expr` desembrulha `result.OK(T)` e retorna `T`. Se for `result.ERROR(E)`, faz **early return** do erro na função atual. A função que usa `try` deve retornar `result<_, E>`.
+
+```
+fn process(): result<string, string> {
+    val a = try divide(10, 2)       // a: int = 5
+    val b = try divide(a, 0)        // early return result.ERROR("divisão por zero")
+    return result.OK("$b")
+}
+```
+
+> ⚠️ Usar `try` em função que não retorna `result<_, E>` é erro de compilação.
 
 ---
 
