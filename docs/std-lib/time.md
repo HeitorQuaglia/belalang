@@ -132,7 +132,7 @@ class DateTime {
 #### Data/hora atual
 
 ```
-from time use DateTime, now, sleep, timestamp
+from time use DateTime, now
 
 agora = now()
 println(agora.format())                  // "2025-07-15T14:30:00"
