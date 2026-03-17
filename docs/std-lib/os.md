@@ -14,6 +14,36 @@
 
 ---
 
+## Sandboxing (Embedding)
+
+`os` contém submódulos com diferentes graus de risco. Em contexto de embedding, o host controla o acesso via C API. Por padrão, **apenas `os.path` e `os.info` estão disponíveis** — operações que não fazem I/O real.
+
+```c
+// Liberar acesso read-only ao ambiente
+bela_vm_allow_module(vm, "os.env");     // apenas get — set não está disponível
+
+// Liberar filesystem dentro de um diretório
+bela_vm_allow_module(vm, "os.fs");
+bela_vm_sandbox_set_root(vm, "/var/game/scripts/data/");  // confinado ao diretório
+
+// Bloquear explicitamente (caso allow_all esteja ativo)
+bela_vm_deny_module(vm, "os.process");  // sem exec/spawn
+bela_vm_deny_module(vm, "os.signal");   // sem manipulação de sinais
+```
+
+### Níveis de acesso sugeridos por contexto
+
+| Nível | Módulos disponíveis | Contexto típico |
+|-------|--------------------|-----------------|
+| Seguro | `os.path`, `os.info` | Jogos, plugins, scripts de configuração |
+| Controlado | + `os.env` (read-only) | Ferramentas, scripts de build |
+| Filesystem | + `os.fs` (com root confinado) | Scripts de automação de arquivos |
+| Completo | Todos | Modo standalone, CLI |
+
+Se um script tentar usar um módulo não habilitado, receberá `result.ERROR` com mensagem `"módulo não disponível: os.xxx"`.
+
+---
+
 ## os — Tipos Compartilhados
 
 ```

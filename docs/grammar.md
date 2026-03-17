@@ -25,6 +25,20 @@ top_level_decl  ::= fn_decl
                   | type_alias
 ```
 
+### Visibilidade
+
+Todas as declarações top-level são **públicas por padrão** — não há keyword de exportação. A convenção para indicar que um símbolo é de uso interno ao módulo é o **prefixo `_`**:
+
+```
+fn processarPedido(order) { ... }    // público — acessível por outros módulos
+fn _validarCampos(fields) { ... }    // privado por convenção — uso interno
+
+class Servico { ... }                // público
+class _Cache { ... }                 // privado por convenção
+```
+
+> O prefixo `_` é uma convenção semântica, não enforçada pelo compilador. Ferramentas (LSP, linter) podem emitir warnings se símbolos `_` forem importados por outros módulos.
+
 ---
 
 ## 2. Declarações de Variáveis
@@ -67,11 +81,20 @@ range_type      ::= "range" "<" type ">"
 
 primitive_type  ::= "int" | "float" | "bool" | "string" | "void" | "dynamic"
 
-generic_type    ::= IDENT "<" type_list ">"   (* inclui array<T>, fixed<T>, etc. *)
+generic_type    ::= IDENT "<" type_list ">"   (* inclui array<T>, Future<T>, fixed<T>, etc. *)
 type_list       ::= type ("," type)*
 ```
 
 > Bela é dinamicamente tipada — `dynamic` é o tipo padrão implícito. Generics são opcionais: `array` equivale a `array<dynamic>`.
+
+### Tipos Built-in Especiais
+
+| Tipo | Descrição |
+|------|-----------|
+| `array<T>` | Sequência mutável de elementos do tipo T |
+| `result<T, E>` | Resultado de operação que pode falhar (ver seção 19) |
+| `Future<T>` | Valor produzido por `async fn` — resolvido pelo event loop (ver seção 23) |
+| `range<T>` | Sequência de valores entre dois extremos (ver seção 17) |
 
 ---
 
@@ -83,7 +106,6 @@ fn_decl         ::= annotation* fn_modifier* "fn" IDENT
                     block
 
 fn_modifier     ::= "async" | "static" | "override" | "abstract"
-                  | access_modifier
 
 param_list      ::= param ("," param)*
 param           ::= IDENT (":" type)? ("=" expr)?
@@ -95,7 +117,33 @@ generic_param   ::= IDENT (":" type)?
 lambda          ::= "fn" "(" param_list? ")" (":" type)? "=>" (expr | block)
 
 access_modifier ::= "public" | "private" | "protected"
+                  (* access_modifier é válido apenas no contexto de membros de classe *)
 ```
+
+### Semântica de Captura em Lambdas
+
+Lambdas capturam variáveis do escopo externo **por referência** (o RC do objeto sobe). A variável capturada mantém o objeto vivo enquanto a lambda existir.
+
+```
+multiplicador = fn(fator) {
+    return fn(n) => n * fator    // captura 'fator' por referência
+}
+
+dobro = multiplicador(2)
+dobro(5)    // 10 — 'fator' ainda acessível via RC
+```
+
+Para **modificar** uma variável do escopo pai (não apenas lê-la), use `outer`:
+
+```
+total = 0
+items.forEach(fn(x) {
+    outer total = total + x    // modifica 'total' no escopo pai
+})
+// total = soma de items
+```
+
+> `outer` em variável inexistente no escopo pai é erro de compilação. Closures que formam ciclos de referência (A captura B, B captura A) podem causar vazamento de memória — não há cicle collector, apenas RC.
 
 ### Bounds em Parâmetros Genéricos
 
@@ -119,7 +167,7 @@ max(Point{x:1,y:2}, Point{x:3,y:4})  // erro runtime: Point não implementa Comp
 ## 5. Enums
 
 ```ebnf
-enum_decl       ::= annotation* access_modifier? "enum" IDENT "{" enum_member* "}"
+enum_decl       ::= annotation* "enum" IDENT "{" enum_member* "}"
 
 enum_member     ::= IDENT ("(" primitive_type ")")? ","?
 ```
@@ -148,7 +196,7 @@ enum Status {
 Structs são **value types imutáveis**, alocados na **stack** (flat na memória). Servem exclusivamente para agrupar dados — sem métodos, sem herança, sem `implements`.
 
 ```ebnf
-struct_decl     ::= annotation* access_modifier? "struct" IDENT "{" struct_field* "}"
+struct_decl     ::= annotation* "struct" IDENT "{" struct_field* "}"
 
 struct_field    ::= IDENT ":" type ";"
                   (* tipo obrigatório — necessário para layout flat na stack *)
@@ -192,7 +240,7 @@ h = Handler {
 ## 7. Classes e Interfaces
 
 ```ebnf
-class_decl      ::= annotation* access_modifier? "abstract"? "class" IDENT
+class_decl      ::= annotation* "abstract"? "class" IDENT
                     generic_params?
                     ("extends" IDENT)?
                     ("implements" IDENT ("," IDENT)*)?
@@ -312,6 +360,8 @@ for_stmt        ::= "for" "(" IDENT "in" (expr | range_expr) ")" block
 
 ```
 
+O `for...in` funciona com qualquer tipo que implemente a interface `Iterable<T>` (ver seção 20). Tipos built-in (array, range, Map, Set, string) são iteráveis implicitamente.
+
 ---
 
 ## 10. Expressões
@@ -353,6 +403,8 @@ postfix_expr    ::= primary_expr (
                     | "[" expr "]"
                     | "?." IDENT
                     | "?." IDENT "(" arg_list? ")"
+                    | "is" type                        (* type checking — retorna bool *)
+                    | "as" type                        (* casting — sugar para .to(type) *)
                   )*
 
 primary_expr    ::= literal
@@ -661,3 +713,291 @@ fn process() {
 ```
 
 > ⚠️ O compilador emite **warning** quando `try` é usado em expressão que provavelmente não retorna `result`. Erro real é verificado em runtime.
+
+---
+
+## 20. Interfaces Built-in
+
+Interfaces built-in são definidas pelo compilador e implementadas implicitamente pelos tipos que satisfazem os requisitos.
+
+```ebnf
+builtin_interface ::= "Comparable" | "Iterable" "<" type ">" | "Iterator" "<" type ">"
+```
+
+### Comparable
+
+Habilita os operadores de ordenação `<`, `>`, `<=`, `>=`. Também permite uso como argumento em funções que exigem `T: Comparable`.
+
+```
+interface Comparable {
+    fn compareTo(other: dynamic): int    // < 0, 0, ou > 0
+}
+```
+
+Tipos que implementam implicitamente: `int`, `float`, `string`.
+
+```
+fn max<T: Comparable>(a: T, b: T): T {
+    if (a.compareTo(b) > 0) { return a }
+    return b
+}
+
+max(3, 7)           // 7
+max("abc", "def")   // "def"
+```
+
+### Iterable\<T\> e Iterator\<T\>
+
+Habilita o uso de um tipo em `for...in`. A classe implementa `Iterable<T>` retornando um `Iterator<T>`.
+
+```
+interface Iterator<T> {
+    fn next(): T
+    fn hasNext(): bool
+}
+
+interface Iterable<T> {
+    fn iterator(): Iterator<T>
+}
+```
+
+Tipos que implementam implicitamente: `array<T>`, `range<T>`, `Map<K,V>` (itera sobre pares), `Set<T>`, `string` (itera sobre caracteres).
+
+```
+class Contagem implements Iterable<int> {
+    val inicio: int
+    val fim: int
+
+    constructor(inicio, fim) {
+        this.inicio = inicio
+        this.fim = fim
+    }
+
+    fn iterator(): Iterator<int> {
+        return ContagemIterator(this.inicio, this.fim)
+    }
+}
+
+class ContagemIterator implements Iterator<int> {
+    val atual: int
+    val fim: int
+
+    constructor(atual, fim) {
+        this.atual = atual
+        this.fim = fim
+    }
+
+    fn hasNext(): bool { return this.atual <= this.fim }
+    fn next(): int {
+        val = this.atual
+        this.atual = this.atual + 1
+        return val
+    }
+}
+
+for (n in Contagem(1, 5)) {
+    println(n)    // 1, 2, 3, 4, 5
+}
+```
+
+### Igualdade e `.equals()`
+
+O operador `==` entre **objetos** (instâncias de classe) chama o método `.equals()` implicitamente. A implementação padrão compara **endereços de ponteiro** (identidade). Para igualdade por valor, faça override:
+
+```
+class Ponto {
+    val x: int
+    val y: int
+
+    constructor(x, y) { this.x = x; this.y = y }
+
+    fn equals(other: dynamic): bool {
+        if (!(other is Ponto)) { return false }
+        return this.x == other.x && this.y == other.y
+    }
+}
+
+p1 = Ponto(1, 2)
+p2 = Ponto(1, 2)
+p1 == p2    // true — usa equals() com override
+```
+
+> Primitivos (`int`, `float`, `bool`, `string`) sempre comparam por valor.
+
+### Serialização e `.toString()`
+
+Todos os objetos possuem um método `.toString()` implícito utilizado em:
+- Interpolação de strings: `"valor: $obj"` ou `"${obj}"`
+- `println(obj)` e variantes
+
+A implementação padrão serializa o objeto para **JSON**:
+
+```
+class Produto {
+    val nome: string
+    val preco: float
+    constructor(nome, preco) { this.nome = nome; this.preco = preco }
+}
+
+p = Produto("Caneta", 2.50)
+println(p)    // {"nome":"Caneta","preco":2.5}
+```
+
+Para customizar, faça override de `toString()`:
+
+```
+class Produto {
+    // ...
+    fn toString(): string {
+        return "$nome (R$ $preco)"
+    }
+}
+
+println(Produto("Caneta", 2.50))    // "Caneta (R$ 2.5)"
+```
+
+---
+
+## 21. Operadores `is` e `as`
+
+### `is` — Type Checking com Smart Cast
+
+`expr is Type` retorna `bool`. Dentro de um bloco `if` que usa `is`, a variável é automaticamente tratada como o tipo verificado (**smart cast**):
+
+```ebnf
+postfix_expr ::= primary_expr ( ... | "is" type | "as" type )*
+```
+
+```
+fn processar(valor: dynamic) {
+    if (valor is string) {
+        println(valor.toUpper())    // valor é string aqui — sem cast manual
+    } else if (valor is int) {
+        println(valor * 2)
+    }
+}
+```
+
+> Smart cast funciona quando o compilador pode garantir que o valor não foi reatribuído entre o `is` e o uso. Se a variável for `dynamic` e reatribuída, o smart cast não se aplica.
+
+### `as` — Casting
+
+`expr as Type` é **syntax sugar** para `expr.to(Type)`. Lança erro de runtime se a conversão não for possível:
+
+```ebnf
+postfix_expr ::= primary_expr ( ... | "as" type )*
+```
+
+```
+val = "42" as int      // equivale a "42".to(int) → 42
+num = 3.14 as int      // 3 (trunca)
+bad = "abc" as int     // erro de runtime: não conversível
+```
+
+Tipos que suportam conversão via `as`:
+
+| De | Para | Comportamento |
+|----|------|---------------|
+| `string` | `int` | Parse — erro se inválido |
+| `string` | `float` | Parse — erro se inválido |
+| `int` | `float` | Promoção |
+| `float` | `int` | Truncamento |
+| `int` | `string` | `toString()` |
+| `float` | `string` | `toString()` |
+| `bool` | `string` | `"true"` ou `"false"` |
+
+---
+
+## 22. Prelude
+
+O **prelude** é o conjunto mínimo de símbolos disponíveis sem nenhum `from ... use ...`. É intencionalmente restrito para que o host tenha controle total sobre o que o script pode fazer.
+
+### Disponível sem import
+
+| Símbolo | Tipo | Descrição |
+|---------|------|-----------|
+| `panic` | `fn(msg: string): void` | Encerra a VM imediatamente (ver seção abaixo) |
+| `typeof` | `fn(val: dynamic): string` | Retorna o tipo como string: `"int"`, `"string"`, `"array"`, etc. |
+
+### Tipos e keywords (parte da gramática)
+
+Os seguintes identificadores são reservados e fazem parte da gramática, não do prelude:
+
+`int`, `float`, `bool`, `string`, `void`, `dynamic`, `null`, `true`, `false`, `result`, `array`, `Future`, `range`
+
+### `panic`
+
+`panic` é uma função built-in que **encerra a VM** (não o processo host). É irrecuperável dentro de Bela — não há `try`/`catch` para panic. O host captura o panic via status `BELA_PANIC` na C API.
+
+```
+fn conectar(host: string, port: int) {
+    if (port < 0 || port > 65535) {
+        panic("porta inválida: $port")    // encerra a VM
+    }
+    // ...
+}
+```
+
+**Quando usar `panic` vs `result.ERROR`:**
+
+| Situação | Use |
+|----------|-----|
+| Erro esperado, recuperável (ex: arquivo não encontrado) | `result.ERROR` |
+| Bug do programador (estado impossível, invariante violada) | `panic` |
+| Argumento inválido que indica uso incorreto da API | `panic` |
+
+### I/O não está no prelude
+
+`print`, `println`, `eprint`, `eprintln` devem ser importados explicitamente de `io`:
+
+```
+from io use println, eprintln
+
+fn main() {
+    println("hello")
+}
+```
+
+> Isso permite que o host controle completamente o I/O do script — substituindo ou bloqueando o acesso ao console.
+
+---
+
+## 23. Concorrência — Modelo Assíncrono
+
+Bela usa um modelo de **event loop single-thread**, similar ao JavaScript. Não há threads reais — toda execução concorrente é cooperativa.
+
+### `async fn` e `Future<T>`
+
+Uma função marcada com `async` retorna implicitamente um `Future<T>`, onde `T` é o tipo de retorno declarado:
+
+```
+async fn buscar(url: string): string {
+    resp = await client.get(url)    // suspende até resposta
+    return resp.body                // Future<string> implícito
+}
+```
+
+`await` suspende a função atual e cede o controle ao event loop. Só pode ser usado dentro de `async fn`.
+
+### Regras
+
+- `await` só é válido dentro de `async fn`
+- `async fn` pode ser chamada de contexto síncrono, mas o resultado é um `Future<T>` não resolvido
+- Para obter o valor de um `Future<T>` em contexto síncrono, use `concurrency.await_sync` (bloqueante — evitar em embedding)
+- O event loop do host pode ser integrado ao loop de Bela via C API
+
+### Integração com o host
+
+O host controla o event loop:
+
+```c
+// Avançar o event loop manualmente (ex: a cada frame de jogo)
+bela_vm_tick(vm);
+
+// Ou delegar ao loop interno de Bela (modo standalone)
+bela_vm_run_event_loop(vm);
+```
+
+### Coordenação de Futures (módulo `concurrency`)
+
+Ver documentação do módulo `concurrency` para: `all`, `race`, `any`, `timeout`, `Channel<T>`.

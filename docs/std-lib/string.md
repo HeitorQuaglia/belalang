@@ -33,8 +33,8 @@ val isEmpty: bool
 ### Métodos — Acesso
 
 ```
-fn indexOf(sub: string): optional<int>
-fn lastIndexOf(sub: string): optional<int>
+fn indexOf(sub: string): result<int, string>
+fn lastIndexOf(sub: string): result<int, string>
 fn contains(sub: string): bool
 fn startsWith(prefix: string): bool
 fn endsWith(suffix: string): bool

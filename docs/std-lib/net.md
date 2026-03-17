@@ -17,6 +17,36 @@
 
 ---
 
+## Sandboxing (Embedding)
+
+Em contexto de embedding, o host controla quais submódulos de `net` estão disponíveis para o script. Por padrão, **nenhum submódulo de rede está disponível** — o host deve habilitá-los explicitamente via C API:
+
+```c
+// Habilitar apenas cliente HTTP
+bela_vm_allow_module(vm, "net.http.client");
+bela_vm_allow_module(vm, "net.url");
+
+// Bloquear explicitamente (caso allow_all esteja ativo)
+bela_vm_deny_module(vm, "net.tcp");
+bela_vm_deny_module(vm, "net.udp");
+
+// Modo standalone — tudo habilitado
+bela_vm_allow_all(vm);
+```
+
+### Camadas sugeridas por contexto
+
+| Contexto | Submódulos recomendados |
+|----------|------------------------|
+| Jogo (scripts de IA/gameplay) | Nenhum ou `net.http.client` com whitelist de hosts |
+| Ferramenta CLI | Todos |
+| Plugin de editor | `net.http.client` |
+| Script de automação | `net.http.client`, `net.dns` |
+
+Se um script tentar usar um módulo não habilitado, receberá `result.ERROR` com mensagem `"módulo não disponível: net.xxx"` — o script não tem como contornar esse bloqueio.
+
+---
+
 ## net — Tipos Compartilhados
 
 ```
