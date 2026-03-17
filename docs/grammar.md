@@ -97,6 +97,23 @@ lambda          ::= "fn" "(" param_list? ")" (":" type)? "=>" (expr | block)
 access_modifier ::= "public" | "private" | "protected"
 ```
 
+### Bounds em Parâmetros Genéricos
+
+A sintaxe `T: Interface` restringe o parâmetro de tipo `T` a tipos que implementam a interface especificada. O bound é **enforcável em runtime** — se o tipo passado não implementar a interface, é erro de runtime. O compilador tenta emitir **warning em compile-time** quando possível.
+
+Apenas **um bound por parâmetro** de tipo é permitido. Não há sintaxe para múltiplos bounds (e.g., `T: A + B` não existe).
+
+```
+fn max<T: Comparable>(a: T, b: T): T {
+    if (a > b) { return a }
+    return b
+}
+
+max(3, 7)             // OK: int implementa Comparable
+max("abc", "def")     // OK: string implementa Comparable
+max(Point{x:1,y:2}, Point{x:3,y:4})  // erro runtime: Point não implementa Comparable
+```
+
 ---
 
 ## 5. Enums
@@ -644,11 +661,3 @@ fn process() {
 ```
 
 > ⚠️ O compilador emite **warning** quando `try` é usado em expressão que provavelmente não retorna `result`. Erro real é verificado em runtime.
-
----
-
-## ⚠️ Em Aberto / A Decidir
-
-| Tópico            | Questão                                                       |
-| ----------------- | ------------------------------------------------------------- |
-| Generics bounds   | `T: Interface` ou outra sintaxe de constraints?               |
