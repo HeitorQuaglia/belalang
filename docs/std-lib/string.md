@@ -9,12 +9,12 @@ Strings são **imutáveis** e internamente codificadas em **UTF-8**. Conversão 
 Strings suportam acesso por índice e por range, reusando a sintaxe de `range<int>`.
 
 ```
-val str = "Hello, World"
+str = "Hello, World"
 
-val first = str[0]            // "H"
-val begin = str[0..4]         // "Hello"         (inclusive)
-val pairs = str[0..11..2]     // "Hlo ol"        (step 2)
-val rev   = str[11..0..-1]    // "dlroW ,olleH"  (reverso)
+first = str[0]            // "H"
+begin = str[0..4]         // "Hello"         (inclusive)
+pairs = str[0..11..2]     // "Hlo ol"        (step 2)
+rev   = str[11..0..-1]    // "dlroW ,olleH"  (reverso)
 ```
 
 - `str[i]` retorna uma `string` de tamanho 1.
@@ -76,22 +76,22 @@ static fn fromBytes(data: array<int>): result<string, string>
 ### Exemplos
 
 ```
-val name = "  Bela Lang  "
-val trimmed = name.trim()                    // "Bela Lang"
-val upper = trimmed.toUpper()                // "BELA LANG"
-val words = trimmed.split(" ")               // ["Bela", "Lang"]
-val joined = string.join(words, "-")         // "Bela-Lang"
+name = "  Bela Lang  "
+trimmed = name.trim()                    // "Bela Lang"
+upper = trimmed.toUpper()                // "BELA LANG"
+words = trimmed.split(" ")               // ["Bela", "Lang"]
+joined = string.join(words, "-")         // "Bela-Lang"
 
-val csv = "a,b,c,d"
-val cols = csv.split(",")                    // ["a", "b", "c", "d"]
-val first = csv[0..0]                        // "a"
+csv = "a,b,c,d"
+cols = csv.split(",")                    // ["a", "b", "c", "d"]
+first = csv[0..0]                        // "a"
 
-val num = "42"
-val parsed = try num.toInt()                 // 42
+num = "42"
+parsed = try num.toInt()                 // 42
 
-val greeting = "Hello"
-val repeated = greeting.repeat(3)            // "HelloHelloHello"
-val padded = greeting.padEnd(10, ".")        // "Hello....."
+greeting = "Hello"
+repeated = greeting.repeat(3)            // "HelloHelloHello"
+padded = greeting.padEnd(10, ".")        // "Hello....."
 ```
 
 ### Interpolação
@@ -99,11 +99,11 @@ val padded = greeting.padEnd(10, ".")        // "Hello....."
 Definida na gramática. Funciona em strings simples e multi-line.
 
 ```
-val name = "World"
-val msg = "Hello, $name!"                    // "Hello, World!"
-val expr = "2 + 2 = ${2 + 2}"               // "2 + 2 = 4"
+name = "World"
+msg = "Hello, $name!"                    // "Hello, World!"
+expr = "2 + 2 = ${2 + 2}"               // "2 + 2 = 4"
 
-val multi = """
+multi = """
     Olá, $name.
     Resultado: ${2 + 2}
 """

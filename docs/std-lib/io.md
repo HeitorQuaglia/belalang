@@ -1,5 +1,9 @@
 # io — Entrada e Saída
 
+> **Nota:** Belalang usa tipagem dinâmica. As anotações de tipo nas assinaturas
+> (incluindo `result<T, E>`) são mantidas como documentação — não são impostas
+> pelo compilador.
+
 ## Submódulos
 
 | Módulo       | Descrição                              |
@@ -55,7 +59,7 @@ from io.console use print, println, readln
 
 fn main(): result<void, IOError> {
     print("Nome: ")
-    val name = try readln()
+    name = try readln()
     println("Olá, $name!")
     return result.OK(())
 }
@@ -182,7 +186,7 @@ class AsyncFile implements Reader, Writer, Closer {
 from io.file use File
 
 fn main(): result<void, IOError> {
-    val content = try File.read("data.txt")
+    content = try File.read("data.txt")
     println(content)
     return result.OK(())
 }
@@ -194,7 +198,7 @@ fn main(): result<void, IOError> {
 from io.file use File, FileMode
 
 fn writeLog(msg: string): result<void, IOError> {
-    val f = try File.open("app.log", FileMode.APPEND)
+    f = try File.open("app.log", FileMode.APPEND)
     try f.writeln(msg)
     f.close()
     return result.OK(())
@@ -207,7 +211,7 @@ fn writeLog(msg: string): result<void, IOError> {
 from io.file use AsyncFile
 
 async fn processFiles(): result<void, IOError> {
-    val content = try await AsyncFile.read("input.txt")
+    content = try await AsyncFile.read("input.txt")
     try await AsyncFile.write("output.txt", content)
     return result.OK(())
 }
@@ -253,7 +257,7 @@ from io.stream use Reader, Writer
 from io use IOError
 
 fn copy(src: Reader, dest: Writer): result<void, IOError> {
-    val content = try src.readAll()
+    content = try src.readAll()
     try dest.write(content)
     try dest.flush()
     return result.OK(())

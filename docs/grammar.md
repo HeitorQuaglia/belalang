@@ -18,9 +18,10 @@ import_item     ::= IDENT ("as" IDENT)?
 
 top_level_decl  ::= fn_decl
                   | class_decl
+                  | struct_decl
                   | interface_decl
                   | enum_decl
-                  | const_decl
+                  | var_decl
                   | type_alias
 ```
 
@@ -28,11 +29,24 @@ top_level_decl  ::= fn_decl
 
 ## 2. Declarações de Variáveis
 
+Bela é **dinamicamente tipada por padrão**. Variáveis não precisam de keyword — a primeira atribuição cria a variável no escopo atual. Atribuições seguintes no mesmo escopo reatribuem.
+
 ```ebnf
-var_decl        ::= "static"? ("val" | "mut val" | "const") IDENT (":" type)? "=" expr ";"
+var_decl        ::= ("const" | "final")? IDENT (":" type_annotation)? "=" expr ";"
+type_annotation ::= "fixed" "<" type ">" | type    (* type sem fixed é apenas hint/documentação *)
 
 type_alias      ::= "type" IDENT "=" type ";"
 ```
+
+| Forma | Mutável | Tipo |
+| ----- | ------- | ---- |
+| `a = 10` | sim | dinâmico |
+| `a: int = 10` | sim | hint (documentação, warning) |
+| `a: fixed<int> = 10` | sim | enforçado (erro em runtime) |
+| `const a = 10` | não (runtime) | dinâmico |
+| `final a = 10` | não (compile-time) | — |
+
+> ⚠️ `: type` sem `fixed` é apenas uma anotação informativa — não impede reatribuição com tipo diferente. Apenas `fixed<T>` enforça o tipo.
 
 ---
 
@@ -40,11 +54,12 @@ type_alias      ::= "type" IDENT "=" type ";"
 
 ```ebnf
 type            ::= primitive_type
-                  | nullable_type
                   | generic_type
-                  | optional_type
                   | result_type
+                  | fn_type
                   | IDENT
+
+fn_type         ::= "async"? "fn" "(" type_list? ")" (":" type)?
 
 result_type     ::= "result" "<" type "," type ">"
 
@@ -52,11 +67,11 @@ range_type      ::= "range" "<" type ">"
 
 primitive_type  ::= "int" | "float" | "bool" | "string" | "void" | "dynamic"
 
-nullable_type   ::= type "?"
-
-generic_type    ::= IDENT "<" type_list ">"   (* inclui ref<T>, array<T>, etc. *)
+generic_type    ::= IDENT "<" type_list ">"   (* inclui array<T>, fixed<T>, etc. *)
 type_list       ::= type ("," type)*
 ```
+
+> Bela é dinamicamente tipada — `dynamic` é o tipo padrão implícito. Generics são opcionais: `array` equivale a `array<dynamic>`.
 
 ---
 
@@ -71,7 +86,8 @@ fn_modifier     ::= "async" | "static" | "override" | "abstract"
                   | access_modifier
 
 param_list      ::= param ("," param)*
-param           ::= IDENT ":" type ("=" expr)?
+param           ::= IDENT (":" type)? ("=" expr)?
+                  (* tipo opcional — warning quando inferência não é possível; obrigatório com fixed<T> *)
 
 generic_params  ::= "<" generic_param ("," generic_param)* ">"
 generic_param   ::= IDENT (":" type)?
@@ -110,7 +126,53 @@ enum Status {
 
 ---
 
-## 6. Classes e Interfaces
+## 6. Structs
+
+Structs são **value types imutáveis**, alocados na **stack** (flat na memória). Servem exclusivamente para agrupar dados — sem métodos, sem herança, sem `implements`.
+
+```ebnf
+struct_decl     ::= annotation* access_modifier? "struct" IDENT "{" struct_field* "}"
+
+struct_field    ::= IDENT ":" type ";"
+                  (* tipo obrigatório — necessário para layout flat na stack *)
+```
+
+| | Struct | Class |
+|---|---|---|
+| Memória | Stack (flat) | Heap (RC) |
+| Semântica | Imutável, cópia | Referência |
+| Métodos | Não | Sim |
+| Herança | Não | Sim |
+| Inicialização | `Name { field: value }` | `Name(args)` |
+
+O compilador gera automaticamente o método `.with(field: value)` para criar cópias com campos alterados.
+
+### Exemplos
+
+```
+struct Point {
+    x: float
+    y: float
+}
+
+p1 = Point { x: 1.0, y: 2.0 }
+p2 = Point { ...p1, x: 10.0 }     // spread: cópia com override
+p3 = p1.with(y: 5.0)               // conveniência gerada pelo compilador
+
+struct Handler {
+    onSuccess: fn(data: string): void
+    onError: fn(err: string): void
+}
+
+h = Handler {
+    onSuccess: fn(data) => println(data),
+    onError: fn(err) => eprintln(err)
+}
+```
+
+---
+
+## 7. Classes e Interfaces
 
 ```ebnf
 class_decl      ::= annotation* access_modifier? "abstract"? "class" IDENT
@@ -119,11 +181,18 @@ class_decl      ::= annotation* access_modifier? "abstract"? "class" IDENT
                     ("implements" IDENT ("," IDENT)*)?
                     "{" class_member* "}"
 
-class_member    ::= var_decl
+class_member    ::= class_var_decl
                   | fn_decl
                   | constructor_decl
+                  | factory_decl
 
-constructor_decl ::= "fn" "(" param_list? ")" block
+class_var_decl  ::= "static"? ("val" | "const") IDENT (":" type_annotation)? ("=" expr)? ";"
+                  (* classes mantêm val/const para declaração de propriedades *)
+
+constructor_decl ::= access_modifier? "constructor" "(" param_list? ")" block
+
+factory_decl     ::= "factory" IDENT "(" param_list? ")" block
+                   (* sempre public, sempre static — sugar para static fn que retorna o tipo da classe *)
 
 interface_decl  ::= "interface" IDENT generic_params?
                     ("extends" IDENT ("," IDENT)*)?
@@ -133,9 +202,41 @@ interface_member ::= fn_signature ";"
 fn_signature     ::= fn_modifier* "fn" IDENT generic_params? "(" param_list? ")" (":" type)?
 ```
 
+> `factory` é syntax sugar para um método `static fn` que retorna o tipo da classe. Factories são sempre públicas. Dentro do body do factory, o constructor da classe é acessível independente da visibilidade.
+
+### Exemplo: Constructor privado + Factories
+
+```
+class Connection {
+    val host: string
+    val port: int
+
+    private constructor(host, port) {
+        this.host = host
+        this.port = port
+    }
+
+    factory connect(host, port) {
+        if (port < 0) {
+            panic("porta inválida")
+        }
+        return Connection(host, port)
+    }
+
+    factory localhost(port) {
+        return Connection("127.0.0.1", port)
+    }
+}
+
+// uso:
+conn = Connection.connect("example.com", 8080)
+local = Connection.localhost(3000)
+// Connection("x", 80)  → erro: constructor é private
+```
+
 ---
 
-## 6. Statements
+## 8. Statements
 
 ```ebnf
 stmt            ::= var_decl
@@ -148,13 +249,12 @@ stmt            ::= var_decl
                   | return_stmt
                   | break_stmt
                   | continue_stmt
-                  | unsafe_stmt
                   | match_expr
                   | block
 
 block           ::= "{" stmt* "}"
 
-assign_stmt     ::= lvalue assign_op expr ";"
+assign_stmt     ::= "outer"? lvalue assign_op expr ";"
 assign_op       ::= "=" | "+=" | "-=" | "*=" | "/=" | "%="
 lvalue          ::= IDENT
                   | expr "." IDENT
@@ -162,12 +262,25 @@ lvalue          ::= IDENT
 
 expr_stmt       ::= expr ";"
 return_stmt     ::= "return" expr? ";"
-unsafe_stmt     ::= "unsafe" block
 ```
+
+### Escopo e Shadowing
+
+Toda atribuição cria uma variável no escopo atual. Se uma variável com o mesmo nome existe num escopo pai, a nova **faz shadow** (não modifica a original). Para modificar uma variável de escopo pai, use `outer`:
+
+```
+total = 0
+for (i in 1..10) {
+    outer total = total + i   // modifica total do escopo pai
+}
+// total é 55
+```
+
+> ⚠️ `outer` em variável que não existe no escopo pai é erro de compilação.
 
 ---
 
-## 7. Controle de Fluxo
+## 9. Controle de Fluxo
 
 ```ebnf
 if_stmt         ::= "if" "(" expr ")" block
@@ -184,7 +297,7 @@ for_stmt        ::= "for" "(" IDENT "in" (expr | range_expr) ")" block
 
 ---
 
-## 8. Expressões
+## 10. Expressões
 
 ```ebnf
 expr            ::= assignment_expr
@@ -229,7 +342,7 @@ primary_expr    ::= literal
                   | IDENT
                   | "this"
                   | "super"
-                  | alloc_expr
+                  | struct_init
                   | "(" expr ")"
                   | await_expr
                   | try_expr
@@ -238,16 +351,20 @@ primary_expr    ::= literal
 
 await_expr      ::= "await" expr
 try_expr        ::= "try" expr              (* desembrulha result.OK ou faz early return do result.ERROR *)
-alloc_expr      ::= "alloc" "<" type ">" "(" arg_list? ")"
 
 arg_list        ::= expr ("," expr)*
 
 null_coalesce   ::= postfix_expr "??" expr
+
+struct_init     ::= IDENT "{" struct_init_fields "}"
+struct_init_fields ::= struct_init_field ("," struct_init_field)* ","?
+struct_init_field  ::= "..." expr                    (* spread *)
+                     | IDENT ":" expr                (* campo nomeado *)
 ```
 
 ---
 
-## 9. Literais
+## 11. Literais
 
 ```ebnf
 literal         ::= INT_LIT
@@ -277,7 +394,7 @@ raw_chars       ::= ([^"$\\] | "\\" .)+
 
 ---
 
-## 10. Anotações e Macros
+## 12. Anotações e Macros
 
 ```ebnf
 annotation      ::= "@" IDENT ("(" annotation_args? ")")?
@@ -290,7 +407,7 @@ macro_args      ::= expr ("," expr)*
 
 ---
 
-## 11. Identificadores e Espaço em Branco
+## 13. Identificadores e Espaço em Branco
 
 ```ebnf
 IDENT           ::= [a-zA-Z_] [a-zA-Z0-9_]*
@@ -301,7 +418,7 @@ COMMENT_BLOCK   ::= "/*" .* "*/"
 
 ---
 
-## 12. Regras de Desambiguação do Parser
+## 14. Regras de Desambiguação do Parser
 
 ### Generics vs. Operadores de Comparação
 
@@ -324,103 +441,45 @@ a < b > c       → comparação        (contexto de expressão, não tipo)
 
 ---
 
-## 13. Gerenciamento de Memória — Reference Counting
+## 15. Gerenciamento de Memória — Reference Counting
 
-A memória é gerenciada automaticamente por **contagem de referências (RC)**. Ao alocar com `alloc<T>`, o runtime mantém um contador interno. Quando o contador chega a zero, a memória é liberada automaticamente.
-
-### Comportamento
+A memória é gerenciada automaticamente por **contagem de referências (RC)**. Alocação e liberação são implícitas — não há API explícita de memória.
 
 ```
-val a = alloc<Ponto>(1, 2)   // RC = 1
-val b = a                     // RC = 2 (b e a apontam para o mesmo objeto)
+a = Ponto(1, 2)              // alocado, RC = 1
+b = a                         // RC = 2 (b e a apontam para o mesmo objeto)
 // fim do escopo de b → RC = 1
-// fim do escopo de a → RC = 0 → liberado
-```
-
-### `val` vs `mut val`
-
-| Declaração | Mutável |
-| ---------- | ------- |
-| `val`      | não     |
-| `mut val`  | sim     |
-
-### Referências (`ref<T>`)
-
-`ref<T>` é o tipo de qualquer valor alocado via `alloc`. Atribuição de `ref<T>` incrementa o contador.
-
-```
-val a: ref<Ponto> = alloc<Ponto>(1, 2)
-val b: ref<Ponto> = a    // mesmo objeto, RC incrementado
+// fim do escopo de a → RC = 0 → liberado automaticamente
 ```
 
 ---
 
-## 14. Bloco Unsafe e Dealloc
+## 16. Null, Safe Navigation e Null Coalescing
 
-O bloco `unsafe` desabilita as proteções do RC e permite operações manuais de memória. Fora de `unsafe`, `dealloc` não pode ser chamado.
-
-```ebnf
-unsafe_stmt     ::= "unsafe" block
-
-dealloc_expr    ::= "dealloc" "(" expr ")"   (* expr deve ser ref<T> *)
-```
-
-`dealloc` ignora o RC e libera a memória imediatamente. O ponteiro torna-se inválido após a chamada — o compilador não oferece garantias dentro de `unsafe`.
-
-```
-unsafe {
-    val p: ref<Ponto> = alloc<Ponto>(1, 2)
-    dealloc(p)       // liberação manual imediata
-    // p inválido a partir daqui
-}
-```
-
-> ⚠️ Usar `dealloc` fora de um bloco `unsafe` é erro de compilação.
-
----
-
-## 15. Optional
-
-`optional<T>` encapsula um valor que pode estar presente ou ausente (`null`). É a forma segura de lidar com ausência de valor — sem acessos nulos acidentais.
-
-```ebnf
-optional_type   ::= "optional" "<" type ">"
-```
-
-### Criação
-
-```
-val a: optional<int> = 42      // presente
-val b: optional<int> = null    // ausente
-```
+Qualquer variável pode conter `null` — Bela trata null como um valor livre, sem wrappers.
 
 ### Safe call `?.`
 
-Acessa atributos ou métodos apenas se o valor estiver presente. Retorna `null` caso contrário:
+Acessa atributos ou métodos apenas se o receptor não for `null`. Retorna `null` caso contrário:
 
 ```
-val name: optional<string> = user?.profile?.name
+name = user?.profile?.name          // null se user ou profile for null
 ```
 
 ### Null coalescing `??`
 
-Fornece um valor padrão quando o optional é `null`:
+Fornece um valor padrão quando a expressão é `null`:
 
 ```
-val display = name ?? "Anônimo"
+display = name ?? "Anônimo"
+value = divide(10, 0) ?? -1         // também funciona com result.ERROR
 ```
 
-### Encadeamento
-
-```
-val len: optional<int> = user?.name?.length ?? 0
-```
-
-> ⚠️ Acessar um `optional<T>` com `.` diretamente sem `?.` é erro de compilação.
+> ⚠️ Acessar um valor `null` com `.` diretamente (sem `?.`) é erro de runtime.
 
 ---
 
-## 16. Range
+## 17. Range
 
 `range<T>` representa uma sequência de valores entre dois extremos, ambos **inclusivos**.
 
@@ -447,17 +506,17 @@ for (i in 10..1..-1) { ... }
 ### Como variável
 
 ```
-val r: range<int> = 1..10
-val down: range<int> = 10..1..-1
+r = 1..10
+down = 10..1..-1
 ```
 
 > ⚠️ Step `0` é erro de compilação. Step negativo com `início < fim` também é erro.
 
 ---
 
-## 17. Pattern Matching
+## 18. Pattern Matching
 
-`match` é uma expressão que compara um valor contra múltiplos padrões. O compilador exige que os casos sejam **exaustivos** (ou que exista `_`).
+`match` é uma expressão que compara um valor contra múltiplos padrões. Recomenda-se incluir `_` (wildcard) para garantir cobertura — em tipagem dinâmica, exaustividade é verificada em **best-effort**.
 
 ```ebnf
 match_expr          ::= "match" expr "{" match_arm* "}"
@@ -487,7 +546,7 @@ pattern_list        ::= pattern ("," pattern)*
 #### Matching de valores e ranges
 
 ```
-val result = match i {
+r = match i {
     1..5 => "pequeno",
     10 => "dez",
     _ => "inesperado"
@@ -518,7 +577,7 @@ match status {
 #### Como expressão
 
 ```
-val msg: string = match status {
+msg = match status {
     Status.OK(_) => "sucesso",
     Status.ERROR(e) => "falha: $e",
     _ => "desconhecido"
@@ -527,28 +586,28 @@ val msg: string = match status {
 
 ---
 
-## 18. Result
+## 19. Result
 
-`result<T, E>` representa uma operação que pode ter sucesso (`OK`) ou falhar (`ERROR`). Substitui exceptions — erros são valores.
+`result` representa uma operação que pode ter sucesso (`OK`) ou falhar (`ERROR`). Substitui exceptions — erros são valores. Parâmetros de tipo são opcionais.
 
 ```ebnf
-result_type     ::= "result" "<" type "," type ">"
+result_type     ::= "result" ("<" type "," type ">")?
 ```
 
 `result` é um enum built-in com dois variantes:
 
 ```
 // equivalente conceitual:
-enum result<T, E> {
-    OK(T),
-    ERROR(E)
+enum result {
+    OK(dynamic),
+    ERROR(dynamic)
 }
 ```
 
 ### Criação
 
 ```
-fn divide(a: int, b: int): result<int, string> {
+fn divide(a, b) {
     if (b == 0) {
         return result.ERROR("divisão por zero")
     }
@@ -559,7 +618,7 @@ fn divide(a: int, b: int): result<int, string> {
 ### Consumo com `match`
 
 ```
-val res = divide(10, 0)
+res = divide(10, 0)
 match res {
     result.OK(value) => print("$value"),
     result.ERROR(err) => print("erro: $err")
@@ -569,33 +628,27 @@ match res {
 ### Consumo com `??` (fallback)
 
 ```
-val value = divide(10, 0) ?? -1    // -1 se ERROR
+value = divide(10, 0) ?? -1    // -1 se ERROR
 ```
 
 ### Propagação com `try`
 
-`try expr` desembrulha `result.OK(T)` e retorna `T`. Se for `result.ERROR(E)`, faz **early return** do erro na função atual. A função que usa `try` deve retornar `result<_, E>`.
+`try expr` desembrulha `result.OK` e retorna o valor interno. Se for `result.ERROR`, faz **early return** do erro na função atual.
 
 ```
-fn process(): result<string, string> {
-    val a = try divide(10, 2)       // a: int = 5
-    val b = try divide(a, 0)        // early return result.ERROR("divisão por zero")
+fn process() {
+    a = try divide(10, 2)       // a = 5
+    b = try divide(a, 0)        // early return result.ERROR("divisão por zero")
     return result.OK("$b")
 }
 ```
 
-> ⚠️ Usar `try` em função que não retorna `result<_, E>` é erro de compilação.
+> ⚠️ O compilador emite **warning** quando `try` é usado em expressão que provavelmente não retorna `result`. Erro real é verificado em runtime.
 
 ---
 
 ## ⚠️ Em Aberto / A Decidir
 
 | Tópico            | Questão                                                       |
-| ----------------- | ------------------------------------------------------------- | ----------------------------------------------------- |
-| Allocator         | Haverá `dealloc<T>(ref<T>)` simétrico, ou memória gerenciada? | Ownership — memória liberada ao fim do escopo do dono |
-| `struct`          | Haverá structs separados de classes?                          |
-| `string`          | Interpolação com `${}` ou outro delimitador?                  |
-| Deref `*`         | Haverá derreferência explícita ou é automática?               |
-| `unsafe`          | Haverá blocos unsafe para operações de baixo nível?           |
+| ----------------- | ------------------------------------------------------------- |
 | Generics bounds   | `T: Interface` ou outra sintaxe de constraints?               |
-| Multiline strings | Usar `"""..."""` ou backtick?                                 |
