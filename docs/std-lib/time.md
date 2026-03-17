@@ -185,7 +185,7 @@ println(natal.isAfter(agora))            // true
 ```
 from time use DateTime, timestamp
 
-ts = timestamp()                         // 1752588600
+ts = timestamp()                         // 1752589800
 dt = DateTime.fromTimestamp(ts)
 println(dt.toIso())                      // "2025-07-15T14:30:00Z"
 ```
