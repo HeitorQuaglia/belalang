@@ -1,4 +1,4 @@
-# marshall — Serialização
+# marshal — Serialização
 
 > **Nota:** Belalang usa tipagem dinâmica. As anotações de tipo nas assinaturas
 > (incluindo `result<T, E>`) são mantidas como documentação — não são impostas
@@ -8,17 +8,17 @@
 
 | Módulo          | Descrição                                |
 | --------------- | ---------------------------------------- |
-| `marshall`      | Tipos compartilhados (MarshallError)     |
-| `marshall.json` | Serialização e desserialização JSON      |
-| `marshall.toml` | Serialização e desserialização TOML      |
-| `marshall.yaml` | Serialização e desserialização YAML      |
+| `marshal`      | Tipos compartilhados (MarshalError)     |
+| `marshal.json` | Serialização e desserialização JSON      |
+| `marshal.toml` | Serialização e desserialização TOML      |
+| `marshal.yaml` | Serialização e desserialização YAML      |
 
 ---
 
-## marshall — Tipos Compartilhados
+## marshal — Tipos Compartilhados
 
 ```
-enum MarshallError {
+enum MarshalError {
     INVALID_SYNTAX(string),
     INVALID_TYPE(string),
     MISSING_FIELD(string),
@@ -28,18 +28,18 @@ enum MarshallError {
 
 ---
 
-## marshall.json
+## marshal.json
 
 ```
-from marshall.json use encode, decode, encodeFormatted
+from marshal.json use encode, decode, encodeFormatted
 ```
 
 ### Funções
 
 ```
-fn encode(value: dynamic): result<string, MarshallError>
-fn encodeFormatted(value: dynamic, indent: int = 2): result<string, MarshallError>
-fn decode(source: string): result<dynamic, MarshallError>
+fn encode(value: dynamic): result<string, MarshalError>
+fn encodeFormatted(value: dynamic, indent: int = 2): result<string, MarshalError>
+fn decode(source: string): result<dynamic, MarshalError>
 ```
 
 `encode` produz JSON compacto. `encodeFormatted` produz JSON indentado para leitura humana.
@@ -58,7 +58,7 @@ Mapeamento de tipos:
 ### Exemplos
 
 ```
-from marshall.json use encode, decode, encodeFormatted
+from marshal.json use encode, decode, encodeFormatted
 from collections use Map
 
 // Encode
@@ -91,23 +91,23 @@ println(restored.get("x"))              // 1
 
 ---
 
-## marshall.toml
+## marshal.toml
 
 ```
-from marshall.toml use encode, decode
+from marshal.toml use encode, decode
 ```
 
 ### Funções
 
 ```
-fn encode(value: dynamic): result<string, MarshallError>
-fn decode(source: string): result<dynamic, MarshallError>
+fn encode(value: dynamic): result<string, MarshalError>
+fn decode(source: string): result<dynamic, MarshalError>
 ```
 
 ### Exemplos
 
 ```
-from marshall.toml use encode, decode
+from marshal.toml use encode, decode
 from collections use Map
 
 tomlStr = """
@@ -134,23 +134,23 @@ output = try encode(data)
 
 ---
 
-## marshall.yaml
+## marshal.yaml
 
 ```
-from marshall.yaml use encode, decode
+from marshal.yaml use encode, decode
 ```
 
 ### Funções
 
 ```
-fn encode(value: dynamic): result<string, MarshallError>
-fn decode(source: string): result<dynamic, MarshallError>
+fn encode(value: dynamic): result<string, MarshalError>
+fn decode(source: string): result<dynamic, MarshalError>
 ```
 
 ### Exemplos
 
 ```
-from marshall.yaml use encode, decode
+from marshal.yaml use encode, decode
 from collections use Map
 
 yamlStr = """

@@ -31,7 +31,7 @@ Bela resolve isso sem abrir mão da leveza.
 | **OOP**         | Metatables (manual) | Classes, interfaces, structs, enums nativos    |
 | **Erros**       | `pcall` / strings   | `result<T, E>` + `try` + pattern matching      |
 | **Memória**     | GC com pausas       | Reference counting — previsível, sem pausas    |
-| **Stdlib**      | Mínima              | Completa: HTTP, I/O async, JSON, regex, crypto |
+| **Stdlib**      | Mínima              | Completa: HTTP, I/O async, JSON, regex, encoding |
 | **Null safety** | Nenhuma             | `?.` safe navigation, `??` coalescing          |
 | **Debugging**   | Básico              | WebAPI, LSP, CLI attach remoto                 |
 | **Execução**    | Embarcado, CLI      | Embarcado, CLI, REPL                           |
@@ -162,7 +162,7 @@ bela repl
 ```c
 // C Host — API de embedding
 BelaVM *vm = bela_vm_new();
-bela_vm_load(vm, "scripts/config.bela");
+bela_vm_load_file(vm, "scripts/config.bela");
 
 // Expor funções do host para Bela
 bela_register_fn(vm, "getPlayerHP", my_get_hp);
@@ -200,13 +200,17 @@ Diferente de linguagens embarcáveis tradicionais, Bela vem com uma stdlib rica 
 | ------------- | --------------------------------------------------- |
 | `string`      | Manipulação de strings UTF-8                        |
 | `math`        | Funções matemáticas, constantes, números aleatórios |
+| `array`       | Tipo built-in `array<T>` — acesso, transformação, busca |
 | `collections` | Map, Set, Stack, Queue, Deque                       |
 | `io`          | Console, arquivos (sync e async), streams           |
 | `os`          | Paths, env, filesystem, processos, signals          |
 | `net`         | HTTP client/server, TCP, UDP, DNS, TLS              |
 | `time`        | DateTime, Duration, fusos horários                  |
+| `concurrency` | Futures, Channels, coordenação async                |
 | `regex`       | Expressões regulares com grupos nomeados            |
-| `marshall`    | Serialização JSON, TOML, YAML                       |
+| `encoding`    | Base64, Hex, URL percent-encoding                   |
+| `marshal`     | Serialização JSON, TOML, YAML                       |
+| `log`         | Logging estruturado com níveis e handler do host    |
 
 > A stdlib é modular: ao embarcar Bela, o host pode restringir quais módulos estão disponíveis. Um jogo pode expor apenas `math` e `collections`, enquanto uma ferramenta CLI pode expor tudo.
 
