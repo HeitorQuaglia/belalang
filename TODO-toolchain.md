@@ -7,11 +7,11 @@ Cada item é uma pergunta ou escolha que precisa ser resolvida antes de implemen
 
 ## Bytecode
 
-- [ ] **Versioning strategy** — strict rejection (VM v0.2 recusa bytecode de v0.1, mensagem "please recompile") vs backward-compat (VM nova roda bytecode antigo). *Proposta: strict. Host controla versão da VM embarcada, não há legado real.*
+- [x] **Versioning strategy** — **Decisão: strict rejection. VM v0.2 recusa bytecode de v0.1, mensagem "please recompile".** Host controla versão da VM embarcada, não há legado real.
 
-- [ ] **Source maps: embedded vs separado** — incluir source maps no `.belc` expõe estrutura do código (problema de IP). Proposta: arquivo `.belmap` separado, distribuído independentemente do `.belc`. Convenção: `.bela` → `.belc` + `.belmap` opcional.
+- [x] **Source maps: embedded vs separado** — **Decisão: arquivo `.belmap` separado, distribuído independentemente do `.belc`.** Convenção: `.bela` → `.belc` + `.belmap` opcional.
 
-- [ ] **Compilation unit** — compilar entry point como bundle único (tudo em um `.belc`) vs compilar módulos individualmente + linker. *Proposta v1: bundle. Simples para distribuição.*
+- [x] **Compilation unit** — **Decisão v1: bundle único (tudo em um `.belc`).** Simples para distribuição. Compilação por módulo + linker fica para versão futura.
 
 - [ ] **Bytecode encryption** — suportar chave de decriptação fornecida pelo host via C API para proteção adicional de IP? Fora do escopo v1, mas precisa ser planejado no formato do header para não quebrar futuramente.
 
@@ -21,7 +21,7 @@ Cada item é uma pergunta ou escolha que precisa ser resolvida antes de implemen
 
 ## Debugger
 
-- [ ] **Segurança do debug port** — `enable_debug = true` abre TCP. Opções: (a) localhost-only + sem auth (desenvolvimento), (b) auth token, (c) Unix socket. *Proposta v1: localhost-only, nunca em produção. Documentar explicitamente.*
+- [x] **Segurança do debug port** — **Decisão v1: localhost-only, sem auth (desenvolvimento apenas). Documentar explicitamente que nunca deve ser usado em produção.**
 
 - [ ] **RC inspection via custom DAP** — DAP não tem request nativa para reference counts. Implementar como `customRequest` (`bela/inspect`). Definir schema da resposta: address, RC, campos, flag de possível ciclo.
 
@@ -35,10 +35,7 @@ Cada item é uma pergunta ou escolha que precisa ser resolvida antes de implemen
 
 ## Hot Reload
 
-- [ ] **Escopo do reload** — três opções:
-  - (a) *Function-body-only* (recomendado v1): aceita reload se assinaturas e campos não mudaram. Se mudou, retorna `BELA_RELOAD_SCHEMA_CHANGE`. Cobre 90% do uso (tweaking lógica).
-  - (b) *Method propagation*: novos métodos chegam para objetos existentes, fields não.
-  - (c) *Full migration* (Erlang model): módulo declara `on_hot_reload(old_state)` para migrar estado.
+- [x] **Escopo do reload** — **Decisão v1: function-body-only.** Aceita reload se assinaturas e campos não mudaram. Se mudou, retorna `BELA_RELOAD_SCHEMA_CHANGE`. Cobre 90% do uso (tweaking lógica). Method propagation e full migration ficam para versões futuras.
 
 - [ ] **Re-execução de top-level code** — hot reload NÃO deve re-executar side effects do init (`db = Database.connect(...)`). Deve substituir definições de função e constantes literais sem re-executar código com efeitos. Como distinguir? Implícito (expressão computada vs. definição pura) ou explícito?
 
@@ -50,9 +47,9 @@ Cada item é uma pergunta ou escolha que precisa ser resolvida antes de implemen
   BELA_RELOAD_NOT_FOUND       // arquivo não encontrado
   ```
 
-- [ ] **File watching** — responsabilidade do host (inotify/FSEvents/ReadDirectoryChanges). VM não faz watching. Host chama `bela_vm_reload()` quando detecta mudança. Confirmar que essa separação é a correta.
+- [x] **File watching** — **Decisão: responsabilidade do host (inotify/FSEvents/ReadDirectoryChanges). VM não faz watching.** Host chama `bela_vm_reload()` quando detecta mudança.
 
-- [ ] **Hot reload + bytecode** — mutuamente exclusivos em produção por design (produção usa `.belc` sem source, desenvolvimento usa `.bela`). Documentar explicitamente.
+- [x] **Hot reload + bytecode** — **Decisão: mutuamente exclusivos em produção por design.** Produção usa `.belc` sem source, desenvolvimento usa `.bela`. Documentar explicitamente.
 
 ---
 
@@ -64,7 +61,7 @@ Cada item é uma pergunta ou escolha que precisa ser resolvida antes de implemen
 
 - [ ] **`fixed<T>` violations como diagnóstico principal** — assignment de tipo incompatível para variável `fixed<T>` deve aparecer sublinhado em vermelho imediatamente. É o maior value add do LSP para Bela. Confirmar como feature prioritária.
 
-- [ ] **Formatting opinionated** — `bela fmt` sem configuração (gofmt style)? Ou configurável (line width, indent style)? *Proposta: sem configuração. Elimina style wars, código Bela sempre igual.*
+- [x] **Formatting opinionated** — **Decisão: sem configuração (gofmt style). Elimina style wars, código Bela sempre igual.**
 
 - [ ] **Module resolution** — LSP precisa resolver `from io use X` (stdlib, path fixo), `from http-router use Y` (dependência externa, depende de `bela.toml`) e `from utils use Z` (módulo local). LSP e package manager precisam ser co-designed. Definir protocolo de resolução.
 
@@ -76,7 +73,7 @@ Cada item é uma pergunta ou escolha que precisa ser resolvida antes de implemen
 
 - [ ] **Split produção vs. desenvolvimento** — código de debug/LSP/hot reload deve ser excluído de builds de produção. Mecanismo: `#ifdef BELA_DEBUG` na VM? Binários separados (`bela-vm.a` vs `bela-dev.a`)? Definir antes de implementar.
 
-- [ ] **Sequenciamento de implementação** — proposta:
+- [x] **Sequenciamento de implementação** — **Decisão:**
   1. **Bytecode (v1 obrigatório)** — sem bytecode, IP não está protegido
   2. **Hot Reload function-body-only (v1)** — diferencial para game dev, escopo limitado
   3. **LSP: Diagnostics + Completion (v1 básico)** — DX mínimo aceitável

@@ -7,7 +7,7 @@ Cada item é uma pergunta ou escolha que precisa ser resolvida antes de document
 
 ## C API — Tipos de Retorno e Consistência
 
-- [ ] **Consistência de retorno em `bela_vm_load_*`** — as funções de carregamento retornam `int`, mas `BelaStatus` já existe. Devem retornar `BelaStatus` para consistência. Definir se `load` e `call` usam o mesmo enum.
+- [x] **Consistência de retorno em `bela_vm_load_*`** — as funções de carregamento retornam `int`, mas `BelaStatus` já existe. **Decisão: retornar `BelaStatus` para consistência. `load` e `call` usam o mesmo enum.**
 
 - [ ] **`bela_vm_call` não tem parâmetro de saída** — a assinatura atual é `int bela_vm_call(vm, fn_name, argc, argv)`. Não há como obter o valor de retorno da função Bela. Opções:
   - (a) `BelaStatus bela_vm_call(vm, fn_name, argc, argv, BelaValue *out)`
@@ -16,7 +16,7 @@ Cada item é uma pergunta ou escolha que precisa ser resolvida antes de document
 
 - [ ] **`bela_vm_eval` e erros** — se a expressão avaliada causa runtime error, o que `bela_vm_eval` retorna? `null` é um valor Bela válido, não pode ser sentinela. Precisa de `bela_vm_eval_safe(vm, expr, BelaValue *out)` retornando `BelaStatus`, ou introspection pós-chamada.
 
-- [ ] **`bela_vm_load_string` sem nome** — erros em código carregado via string mostram `??:42`. Precisa de `bela_vm_load_string_named(vm, source, name)` para mensagens de erro úteis (ex: `"<repl>:5"`).
+- [x] **`bela_vm_load_string` sem nome** — erros em código carregado via string mostram `??:42`. **Decisão: adicionar `bela_vm_load_string_named(vm, source, name)` para mensagens de erro úteis (ex: `"<repl>:5"`).**
 
 ---
 
@@ -40,9 +40,9 @@ Cada item é uma pergunta ou escolha que precisa ser resolvida antes de document
   - `BelaValue bela_object_get(BelaVM *vm, BelaValue obj, const char *field)`
   - `void bela_object_set(BelaVM *vm, BelaValue obj, const char *field, BelaValue v)`
 
-- [ ] **Ownership de strings em `bela_value_string`** — quando o host cria `bela_value_string(vm, s)`, Bela copia a string ou guarda ponteiro? Se guardar ponteiro e o host liberar a memória, use-after-free. Definir: Bela sempre copia. Documentar.
+- [x] **Ownership de strings em `bela_value_string`** — quando o host cria `bela_value_string(vm, s)`, Bela copia a string ou guarda ponteiro? **Decisão: Bela sempre copia. Documentar explicitamente.**
 
-- [ ] **`bela_vm_stacktrace` — ownership da string retornada** — retorna `const char *`. Quem owna? Padrão C: "VM owna, válido até próxima chamada API." Precisa ser documentado explicitamente para evitar double-free ou leak.
+- [x] **`bela_vm_stacktrace` — ownership da string retornada** — retorna `const char *`. **Decisão: VM owna, válido até próxima chamada API. Documentar explicitamente.**
 
 ---
 
@@ -71,11 +71,11 @@ Cada item é uma pergunta ou escolha que precisa ser resolvida antes de document
   - `const char *module_search_path` — onde procurar módulos além de stdlib
   - `bool strict_mode` — força `fixed<T>` em todo código, sem `dynamic`
 
-- [ ] **Unidade de `max_stack`** — o spec não especifica. Bytes? Call frames? Profundidade de chamadas? *Proposta: call frames (mais intuitivo para scripts).*
+- [x] **Unidade de `max_stack`** — o spec não especifica. **Decisão: call frames (mais intuitivo para scripts).**
 
 - [ ] **Múltiplos `bela_vm_load_*` no mesmo VM** — é possível? Os namespaces se mesclam? Ex: carregar uma "base library" e depois vários scripts de usuário que compartilham o mesmo global scope. Definir semântica de múltiplos loads.
 
-- [ ] **Estado do VM após `BELA_PANIC`** — o VM é utilizável após panic? Ou precisa ser freed e recriado? Para hosts long-running (servidores de jogo), recuperar de panic script sem destruir o VM seria valioso. Definir: VM entra em estado `DEAD` após PANIC, deve ser freed e recriado.
+- [x] **Estado do VM após `BELA_PANIC`** — **Decisão: VM entra em estado `DEAD` após PANIC, deve ser freed e recriado.** Para hosts long-running, recriar a VM é o caminho seguro.
 
 - [ ] **`async fn` chamada do C** — se `bela_vm_call` chama uma função `async`, o retorno é `Future<T>`. O host precisa chamar `bela_vm_tick(vm)` em loop até o future resolver. Definir API para: (a) detectar se retorno é Future, (b) aguardar resolução, (c) obter valor final.
 
@@ -83,29 +83,27 @@ Cada item é uma pergunta ou escolha que precisa ser resolvida antes de document
 
 ## C API — Callbacks
 
-- [ ] **`BelaLogHandler` — conflito de assinatura** — `log.md` define `typedef void (*BelaLogHandler)(int level, const char *msg, const char *context)` com `context` para key=value estruturado. IDEIAS-ALEM-SPEC.md tem só `(int level, const char *msg)`. Qual é canônico? *Proposta: usar a assinatura de log.md (com context) — perda de informação estruturada seria um downgrade.*
+- [x] **`BelaLogHandler` — assinatura canônica** — `log.md` define `typedef void (*BelaLogHandler)(int level, const char *msg, const char *context)` com `context` para key=value estruturado. **Decisão: usar a assinatura de log.md (com context) — perda de informação estruturada seria um downgrade.**
 
 - [ ] **Callbacks faltando** — o spec tem log handler e panic handler. Faltam:
   - `bela_set_oom_handler(vm, handler)` — notificação antes de OOM terminar a VM
   - `bela_set_timeout_handler(vm, handler)` — notificação quando instruction limit é atingido
   - `bela_set_module_load_handler(vm, handler)` — interceptar imports, permitir ao host fornecer módulos customizados ou bloquear módulos específicos em runtime
 
-- [ ] **`BelaPanicHandler` — pode cancelar o panic?** — retorna `void`, então é só notificação. Panic sempre termina a VM. Confirmar que essa é a semântica correta (panic é irrecuperável dentro de Bela, o host pode apenas logar e recriar a VM).
+- [x] **`BelaPanicHandler` — pode cancelar o panic?** — **Decisão: não. Panic é irrecuperável, handler é só notificação (`void`). Host pode apenas logar e recriar a VM.**
 
 ---
 
 ## Sandboxing — Estado Padrão e API
 
-- [ ] **Estado padrão após `bela_vm_new()`** — deny_all ou algo menos restritivo? Se deny_all, nem `math` nem `string` funcionam por padrão, o que é inutilizável. *Proposta: módulos de "computação pura" são sempre disponíveis (ver item abaixo); apenas módulos com I/O precisam de allow explícito.*
+- [x] **Estado padrão após `bela_vm_new()`** — **Decisão: módulos de "computação pura" são sempre disponíveis; apenas módulos com I/O precisam de allow explícito.**
 
-- [ ] **Enumerar módulos "sempre disponíveis" (Nível 0)** — o spec fala em "computação pura" mas não lista quais módulos são. Classificar cada módulo stdlib:
-  - Sempre disponível: `math`, `string`, `collections` (array, map, set), `json`, `encoding`, `pattern`
-  - Requer allow: `io`, `os.*`, `net.*`, `concurrency` (I/O implícito via event loop?)
-  - `time` — ler timestamp é I/O? *Proposta: `time.now()` disponível por padrão; `time.sleep()` requer allow.*
-  - `random` — sempre disponível (sem I/O)
-  - `log` — sempre disponível (o handler é do host, não é I/O do script)
+- [x] **Enumerar módulos "sempre disponíveis" (Nível 0)** — **Decisão:**
+  - Sempre disponível: `math`, `string`, `collections` (array, map, set), `json`, `encoding`, `regex`, `random`, `log`
+  - Requer allow: `io`, `os.*`, `net.*`, `concurrency`
+  - `time.now()` disponível por padrão; `time.sleep()` requer allow
 
-- [ ] **API de nível de sandbox** — `bela_vm_allow_module()` / `bela_vm_deny_module()` são granulares mas verbosos para casos comuns. Considerar conveniência:
+- [x] **API de nível de sandbox** — **Decisão: implementar enum de conveniência:**
   ```c
   typedef enum {
       BELA_SANDBOX_PURE,        // apenas computação (default embedding)
@@ -118,7 +116,7 @@ Cada item é uma pergunta ou escolha que precisa ser resolvida antes de document
   void bela_sandbox_set_level(BelaVM *vm, BelaSandboxLevel level);
   ```
 
-- [ ] **Precedência allow vs. deny** — se o host chama `bela_vm_allow_all()` seguido de `bela_vm_deny_module("os.process")`, o deny deve ganhar. Definir regra explícita: *última chamada vence* ou *deny sempre prevalece sobre allow*? *Proposta: última chamada vence (mais previsível para quem configura manualmente).*
+- [x] **Precedência allow vs. deny** — **Decisão: última chamada vence (mais previsível para quem configura manualmente).** Ex: `allow_all()` + `deny_module("os.process")` = tudo menos os.process.
 
 ---
 
@@ -126,16 +124,13 @@ Cada item é uma pergunta ou escolha que precisa ser resolvida antes de document
 
 - [ ] **Confinamento de diretório — path traversal** — `bela_vm_sandbox_set_root(vm, "/var/game/")` deve rejeitar `Path("../../etc/passwd")`. A VM precisa canonicalizar caminhos e rejeitar escapes. Atenção especial em Windows: UNC paths (`\\server\share`), drive letters (`C:\`), e junction points. Definir: canonicalização acontece na VM ou no OS?
 
-- [ ] **Múltiplos roots de filesystem** — um script pode precisar de acesso a `/var/game/data/` e `/tmp/game_cache/` mas nada mais. A API atual permite apenas um root. Considerar:
-  - `bela_sandbox_add_allowed_path(vm, path)` — whitelist de paths (aditivo)
-  - `bela_sandbox_set_root(vm, path)` — root único mais simples (v1)
-  *Proposta v1: root único. Múltiplos paths em versão futura.*
+- [x] **Múltiplos roots de filesystem** — **Decisão v1: root único via `bela_sandbox_set_root(vm, path)`.** Múltiplos paths (`bela_sandbox_add_allowed_path`) ficam para versão futura.
 
-- [ ] **Domain whitelist para `net`** — `bela_sandbox_allow_hosts(vm, hosts[], count)` está no IDEIAS mas não na C API principal. Definir: é parte do sandboxing API ou do net module config? Como interage com `bela_vm_allow_module(vm, "net.http.client")`? *Proposta: `bela_sandbox_allow_hosts()` é uma restrição adicional sobre allow — mesmo com net habilitado, só acessa hosts na whitelist.*
+- [x] **Domain whitelist para `net`** — **Decisão: `bela_sandbox_allow_hosts()` é parte do sandboxing API e funciona como restrição adicional — mesmo com net habilitado, só acessa hosts na whitelist.**
 
-- [ ] **Unificação de limites de recursos** — `BelaConfig.max_memory` e `BelaConfig.max_instructions` duplicam `bela_sandbox_set_memory_limit()` e `bela_sandbox_set_instruction_limit()`. Ter dois lugares para configurar a mesma coisa é fonte de bugs. *Proposta: limites só em `BelaConfig` (ao criar VM). Remover as funções duplicadas de sandboxing.*
+- [x] **Unificação de limites de recursos** — **Decisão: limites só em `BelaConfig` (ao criar VM). Remover as funções duplicadas de sandboxing.**
 
-- [ ] **Lock de sandbox após load** — se o host chamar `bela_vm_allow_module(vm, "net")` depois de um script já ter sido carregado, o script ganha acesso retroativamente? Isso pode ser um bug de segurança se o host configura na ordem errada. Considerar: sandbox locked após o primeiro `bela_vm_load_*`. Tentativa de modificar após lock retorna `BELA_SANDBOX_LOCKED`.
+- [x] **Lock de sandbox após load** — **Decisão: sandbox locked após o primeiro `bela_vm_load_*`. Tentativa de modificar após lock retorna `BELA_SANDBOX_LOCKED`.** Previne bugs de segurança por ordem de configuração.
 
 ---
 
@@ -143,9 +138,9 @@ Cada item é uma pergunta ou escolha que precisa ser resolvida antes de document
 
 - [ ] **Callback de violação de sandbox** — quando um script tenta acessar um módulo não permitido, o host recebe notificação? Útil para auditoria de segurança e logging. Falta: `bela_set_sandbox_violation_handler(vm, handler)` que recebe `(vm, module_name, script_location)`.
 
-- [ ] **Funções C registradas escapam o sandbox — documentar** — `bela_register_fn()` registra código nativo do host. Esse código pode fazer qualquer I/O sem restrições da VM. O sandbox controla apenas acesso à stdlib. Host-registered functions são sempre "confiáveis" porque o host as registrou explicitamente. Isso precisa ser documentado claramente para que hosts não assumam que o sandbox cobre suas próprias funções.
+- [x] **Funções C registradas escapam o sandbox — documentar** — **Decisão: host-registered functions são sempre "confiáveis" e bypass sandbox. Documentar claramente que o sandbox controla apenas stdlib, não código nativo do host.**
 
-- [ ] **Módulos host-defined e sandboxing** — `bela_register_module_fn(vm, "game.physics", "applyForce", fn)` — módulos registrados pelo host estão sujeitos a sandboxing? *Proposta: não — módulos host-defined são sempre disponíveis. O host é soberano. Sandbox controla apenas stdlib.*
+- [x] **Módulos host-defined e sandboxing** — **Decisão: módulos host-defined são sempre disponíveis. O host é soberano. Sandbox controla apenas stdlib.**
 
 ---
 
