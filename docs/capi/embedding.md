@@ -2,7 +2,7 @@
 
 A C API de Bela segue um ciclo de vida linear: criar a VM, configurar sandbox e callbacks, carregar código, executar funções e liberar a VM. Todas as configurações devem ser feitas antes do primeiro `bela_vm_load_*` — após o carregamento, o sandbox é travado e tentativas de alteração retornam `BELA_SANDBOX_LOCKED`.
 
-> Após um `BELA_PANIC`, a VM entra em estado `DEAD` e não pode ser reutilizada. Para hosts long-running, a abordagem correta é liberar a VM com `bela_vm_free` e recriar com `bela_vm_new`.
+> **Nota:** Após um `BELA_PANIC`, a VM entra em estado `DEAD` e não pode ser reutilizada. Para hosts long-running, a abordagem correta é liberar a VM com `bela_vm_free` e recriar com `bela_vm_new`.
 
 ---
 
@@ -116,7 +116,7 @@ BelaStatus bela_vm_load_string(BelaVM *vm, const char *source);
 BelaStatus bela_vm_load_string_named(BelaVM *vm, const char *source, const char *name);
 ```
 
-Carrega código-fonte a partir de uma string em memória. `bela_vm_load_string` é equivalente a `bela_vm_load_string_named(vm, source, "?")`.
+Carrega código-fonte a partir de uma string em memória. `bela_vm_load_string` é equivalente a `bela_vm_load_string_named(vm, source, "??")`.
 
 `bela_vm_load_string_named` permite fornecer um nome para o chunk. O nome aparece nas mensagens de erro e stack traces em vez de `??`:
 
@@ -165,13 +165,12 @@ if (status == BELA_PANIC) {
 
 ### bela_vm_eval
 
-```c
-BelaValue bela_vm_eval(BelaVM *vm, const char *expr);
-```
-
-Avalia uma expressão Bela e retorna o resultado como `BelaValue`.
-
-> **TBD:** Se a expressão avaliada causa um runtime error, `bela_vm_eval` não pode usar `null` como sentinela pois `null` é um valor Bela válido. Candidato principal: `bela_vm_eval_safe(vm, expr, BelaValue *out)` retornando `BelaStatus`. Alternativa: introspection pós-chamada via `bela_vm_last_error`. Será definido antes da implementação.
+> **TBD:** Se a expressão avaliada causa runtime error, `bela_vm_eval` não pode usar `null` como
+> sentinela de erro — `null` é um valor Bela válido. Candidatos:
+> - `BelaValue bela_vm_eval(BelaVM *vm, const char *expr)` com introspection pós-chamada via `bela_vm_last_error`
+> - `BelaStatus bela_vm_eval_safe(BelaVM *vm, const char *expr, BelaValue *out)`
+>
+> Será definido antes da implementação.
 
 ---
 
@@ -190,6 +189,13 @@ Avalia uma expressão Bela e retorna o resultado como `BelaValue`.
 ### async fn do C
 
 > **TBD:** Se `bela_vm_call` chama uma função `async`, o retorno é um `Future<T>`. O host precisaria de `bela_vm_tick(vm)` em loop até o future resolver, mais API para detectar se o retorno é um Future, aguardar resolução e obter o valor final. Será definido antes da implementação.
+
+---
+
+### bela_vm_last_error
+
+> **TBD:** Retorna detalhes do último erro da VM (mensagem de texto). Assinatura e
+> ownership da string a definir. Será definido antes da implementação.
 
 ---
 
