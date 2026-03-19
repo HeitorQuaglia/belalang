@@ -71,17 +71,17 @@ Response:
 
 Quando ocorre um `BELA_PANIC`, o DAP server captura um **snapshot** dos frames de stack e variáveis locais antes que a VM entre em estado `DEAD`. A inspeção posterior acontece sobre esse snapshot — não sobre a VM morta.
 
+Após o snapshot, a VM segue o ciclo normal de `BELA_PANIC` descrito em `[../capi/embedding.md](../capi/embedding.md)`: apenas `bela_vm_free` é chamada sobre ela. O usuário inspeciona o snapshot; ao encerrar a sessão, a VM é liberada.
+
 Sequência:
 
 1. Panic dispara → DAP server captura snapshot (frames, variáveis locais, mensagem do panic)
 2. DAP emite `stopped` com `reason: "bela/panic"` + mensagem do panic
-3. `stackTrace`, `scopes`, `variables` respondem com dados do snapshot (read-only)
+3. Usuário navega no snapshot: `stackTrace`, `scopes`, `variables` respondem do snapshot (read-only)
 4. `evaluate`, `continue`, `next`, `stepIn`, `stepOut` retornam erro — VM está DEAD
 5. `terminate` ou `disconnect` → `bela_vm_free` é chamada; sessão encerrada
 
-Não há `customRequest` para panic — o mecanismo é o evento `stopped` padrão do DAP com uma `reason` customizada.
-
-> **Nota:** após `BELA_PANIC`, qualquer chamada à VM (exceto `bela_vm_free`) tem comportamento indefinido. O snapshot garante que a inspeção ocorre inteiramente fora da VM morta. Ver ciclo de vida completo em [../capi/embedding.md](../capi/embedding.md).
+Não há `customRequest` para panic — usa o evento `stopped` padrão do DAP com uma `reason` customizada.
 
 ---
 
@@ -94,9 +94,7 @@ Usa o request `evaluate` padrão do DAP. A implementação reutiliza o pipeline 
 3. O resultado é retornado como `Variable` padrão do DAP, com tipo e valor
 4. Erros de compilação ou runtime retornam `result` com a descrição do erro — a sessão de debug não é encerrada
 
----
-
-## Breakpoints Condicionais
+### Breakpoints Condicionais
 
 Usam o campo `condition` nativo do DAP em `setBreakpoints`. A condição é uma expressão Bela avaliada pelo mesmo sub-evaluator do evaluate at breakpoint — sem mecanismo separado.
 
