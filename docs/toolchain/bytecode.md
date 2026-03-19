@@ -26,7 +26,7 @@ O source map é distribuído independentemente do `.belc`. O host decide se incl
 - **Sem `.belmap`:** erros e stack traces mostram localização no bytecode (offset de instrução).
 - **Com `.belmap`:** erros e stack traces mostram linha e coluna do arquivo `.bela` original.
 
-> **TBD:** Formato exato do `.belmap`. O schema será compartilhado com o debugger — não duplicar. Ver `toolchain/debugger.md`. Será definido antes da implementação.
+> **TBD:** Formato exato do `.belmap` — campos adicionais (inline hints, scope boundaries). O schema é definido em [`source-maps.md`](source-maps.md) — não duplicar. Será definido antes da implementação.
 
 ---
 
@@ -53,4 +53,4 @@ Não há backward-compatibility intencional. Essa decisão é viável porque o h
 
 > **TBD:** Constant pool — string interning e escopo do pool (por módulo vs. por bundle). Será definido antes da implementação.
 
-> **TBD:** Source maps compartilhados entre bytecode e debugger — o formato `.belmap` deve ser definido uma vez e consumido pelos dois. Não duplicar schema. Ver `toolchain/debugger.md`. Será definido antes da implementação.
+> **TBD:** Source maps compartilhados entre bytecode e debugger — o formato `.belmap` é definido em [`source-maps.md`](source-maps.md). Não duplicar schema. Será definido antes da implementação.
