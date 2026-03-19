@@ -7,8 +7,6 @@ A Compilation Database (CDB) é o componente central da `libbela-frontend`. Todo
 ## Arquitetura
 
 ```
-   bela CLI          REPL           LSP
-       ↑               ↑              ↑
 ┌──────────────────────────────────────────────┐
 │               libbela-frontend               │
 │                                              │
@@ -24,6 +22,8 @@ A Compilation Database (CDB) é o componente central da `libbela-frontend`. Todo
 │                                              │
 │  Lexer   Parser   Sema   Codegen             │
 └──────────────────────────────────────────────┘
+       ↑               ↑              ↑
+   bela CLI          REPL           LSP
 ```
 
 ---
@@ -90,4 +90,4 @@ A Sema, ao analisar um fragmento novo, recebe o `SemaResult.symbol_table` acumul
 
 > **TBD:** Serialização da CDB em disco — se o cache de resultados (TokenArray, Ast, SemaResult) persiste entre invocações do compilador para reuso incremental. Será definido antes da implementação.
 
-> **TBD:** Protocolo de comunicação do LSP (JSON-RPC sobre stdio vs. socket) — não é responsabilidade da `libbela-frontend`, mas afeta como ela é invocada e inicializada. Ver spec `docs/superpowers/specs/2026-03-18-compilation-frontend-design.md`, Seção 7. Será definido antes da implementação.
+> **TBD:** Protocolo de comunicação do LSP (JSON-RPC sobre stdio vs. socket) — não é responsabilidade da `libbela-frontend`, mas afeta como ela é invocada e inicializada (ver Seção 7 do design do frontend de compilação). Será definido antes da implementação.
