@@ -15,13 +15,6 @@ const SemaResult = struct {
 };
 ```
 
-| Campo | Tipo | Descrição |
-|---|---|---|
-| `diagnostics` | `[]Diagnostic` | Erros e warnings com span (token index) |
-| `symbol_table` | `SymbolTable` | Mapa de escopo → símbolos declarados |
-| `node_types` | `[]TypeInfo` | `Node.Index` → tipo inferido (best-effort) |
-| `refs` | `[]Ref` | `Node.Index` → `Node.Index` da definição |
-
 O campo `refs` habilita diretamente o recurso de "go-to-definition" do [LSP](../toolchain/lsp.md).
 
 ---
@@ -45,8 +38,6 @@ const Diagnostic = struct {
 | `severity` | `.err` bloqueia o Codegen; `.warning` não bloqueia |
 | `token` | `Token.Index` que aponta para o token principal do construct problemático — o span é derivado do `TokenArray` |
 | `message` | Mensagem textual destinada ao usuário |
-
-Diagnósticos com `severity == .err` impedem a execução da fase de Codegen. Warnings são reportados mas não bloqueiam a geração de bytecode.
 
 ---
 
