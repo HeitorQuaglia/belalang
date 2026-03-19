@@ -1,6 +1,6 @@
 # Compiler — Compilation Database (CDB)
 
-A Compilation Database (CDB) é o componente central da `libbela-frontend`. Todos os consumidores — compilador CLI, REPL e LSP — são clientes desta biblioteca através da CDB; nenhum deles contém lógica de compilação própria.
+A Compilation Database (CDB) é o componente central da `libbela-frontend`. Todos os consumidores — compilador CLI, REPL e LSP — são clientes desta biblioteca através da CDB; nenhum deles contém lógica de compilação própria. O protocolo de comunicação entre o LSP e a `libbela-frontend` (JSON-RPC sobre stdio vs. socket) está fora do escopo deste documento.
 
 ---
 
@@ -34,7 +34,7 @@ A Compilation Database (CDB) é o componente central da `libbela-frontend`. Todo
 
 | Origem | Geração do SourceId |
 |--------|---------------------|
-| Arquivo em disco | Hash ou caminho canônico do arquivo |
+| Arquivo em disco | A definir — hash de conteúdo ou caminho canônico (ver TBD) |
 | String em memória (REPL, LSP hover) | Hash do conteúdo da string |
 
 Todas as queries da CDB recebem um `SourceId` como chave. A CDB usa esse identificador para localizar o resultado em cache e detectar mudanças de conteúdo.
@@ -66,6 +66,8 @@ A CDB usa o **hash do conteúdo** do source como mecanismo de invalidação. A c
 
 Não há invalidação granular de fases individuais ou nós de AST — quando o source muda, toda a cadeia para aquele `SourceId` é descartada. Esse modelo simplifica a implementação sem custo prático: as fases são rápidas e a invalidação total por arquivo é aceitável.
 
+> **TBD:** Serialização da CDB em disco — se o cache de resultados (TokenArray, Ast, SemaResult) persiste entre invocações do compilador para reuso incremental. Será definido antes da implementação.
+
 ---
 
 ## Modelo de Arena
@@ -83,11 +85,3 @@ O REPL usa uma **arena de sessão única**, compartilhada por todos os fragmento
 A Sema, ao analisar um fragmento novo, recebe o `SemaResult.symbol_table` acumulado das entradas anteriores como escopo externo — sem re-executar as fases sobre fragmentos já aceitos. Fragmentos rejeitados (com erros) são descartados sem afetar a arena ou o estado acumulado.
 
 > **Limitação conhecida (v1):** a arena do REPL cresce sem limite durante a sessão — não há mecanismo de eviction de fragmentos individuais. Qualquer estratégia futura de liberação de memória por fragmento exigiria revisão do modelo de arena única.
-
----
-
-## TBDs
-
-> **TBD:** Serialização da CDB em disco — se o cache de resultados (TokenArray, Ast, SemaResult) persiste entre invocações do compilador para reuso incremental. Será definido antes da implementação.
-
-> **TBD:** Protocolo de comunicação do LSP (JSON-RPC sobre stdio vs. socket) — não é responsabilidade da `libbela-frontend`, mas afeta como ela é invocada e inicializada (ver Seção 7 do design do frontend de compilação). Será definido antes da implementação.
