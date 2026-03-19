@@ -1,6 +1,6 @@
 # C API — Sandboxing
 
-O sandbox de Bela controla exclusivamente o acesso à **stdlib**. Funções e módulos registrados pelo host via `bela_register_fn()` são sempre confiáveis — o host é soberano sobre o que expõe ao script. Toda configuração de sandbox deve ocorrer **antes do primeiro `bela_vm_load_*()`**: após o primeiro carregamento, o sandbox é travado e qualquer tentativa de modificação retorna `BELA_SANDBOX_LOCKED`. A regra de precedência "última chamada vence" aplica-se apenas pré-lock; pós-lock, todas as tentativas retornam erro.
+O sandbox de Bela controla exclusivamente o acesso à **stdlib**. Funções e módulos registrados pelo host via `bela_register_fn()` são sempre confiáveis — o host é soberano sobre o que expõe ao script. Toda configuração de sandbox deve ocorrer **antes do primeiro `bela_vm_load_*()`**: após o primeiro carregamento, o sandbox é travado e qualquer tentativa de modificação retorna `BELA_SANDBOX_LOCKED` (ver `capi/embedding.md`). A regra de precedência "última chamada vence" aplica-se apenas pré-lock; pós-lock, todas as tentativas retornam erro.
 
 ---
 
@@ -47,6 +47,7 @@ bela_sandbox_set_level(vm, BELA_SANDBOX_FILESYSTEM);
 | `string`       | ✓                 |              |
 | `collections`  | ✓                 |              |
 | `encoding`     | ✓                 |              |
+| `json`         | ✓                 |              |
 | `regex`        | ✓                 |              |
 | `random`       | ✓                 |              |
 | `log`          | ✓                 |              |
@@ -139,6 +140,9 @@ BelaVM *vm = bela_vm_new(&cfg);
 | `max_instructions` | `size_t` | Limite de instruções por execução. `0` = sem limite. | `0` (sem limite) |
 
 > **Nota:** Não existem funções separadas de sandboxing para limites de recursos. Toda configuração de limites ocorre em `BelaConfig` e é imutável após `bela_vm_new`.
+
+> **Nota:** Os campos listados acima são os relevantes para sandboxing. A struct `BelaConfig`
+> completa (incluindo `max_stack`, `debug_host`, etc.) está documentada em `capi/embedding.md`.
 
 > **TBD:** Unificação de `bela_sandbox_set_root` e `bela_sandbox_allow_hosts` em `BelaConfig` está em aberto. Atualmente alguns settings de sandbox são em `BelaConfig` (limites de recursos) e outros são chamadas separadas (root, whitelist de hosts). Será definido antes da implementação.
 
