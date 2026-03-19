@@ -53,4 +53,4 @@ Não há backward-compatibility intencional. Essa decisão é viável porque o h
 
 > **TBD:** Constant pool — string interning e escopo do pool (por módulo vs. por bundle). Será definido antes da implementação.
 
-> **TBD:** Source maps compartilhados entre bytecode e debugger — o formato `.belmap` é definido em [`source-maps.md`](source-maps.md). Não duplicar schema. Será definido antes da implementação.
+> **RESOLVIDO:** Source maps compartilhados entre bytecode e debugger — o formato `.belmap` é definido em [`source-maps.md`](source-maps.md). Não duplicar schema.
