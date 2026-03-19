@@ -8,7 +8,8 @@ O debugger implementa o Debug Adapter Protocol (DAP) via TCP. É v2 — depende 
 
 - DAP via TCP em `127.0.0.1:<porta>`
 - Sem autenticação
-- ⚠ Somente para desenvolvimento. Nunca expor em produção. Nunca bind em `0.0.0.0`.
+
+> **⚠ Atenção:** Somente para desenvolvimento. Nunca expor em produção. Nunca fazer bind em `0.0.0.0`.
 
 > **TBD:** Porta padrão do DAP server e se é configurável via `BelaConfig` ou argumento de CLI. Será definido antes da implementação.
 
@@ -56,6 +57,8 @@ Response:
 
 Retorna o estado do event loop no momento da pausa. Útil porque o event loop congela completamente durante breakpoints — timers param, futures não resolvem.
 
+Sem parâmetros no request.
+
 Response:
 ```json
 {
@@ -67,11 +70,11 @@ Response:
 
 ---
 
-## Panic Stop
+## Parada por Panic
 
 Quando ocorre um `BELA_PANIC`, o DAP server captura um **snapshot** dos frames de stack e variáveis locais antes que a VM entre em estado `DEAD`. A inspeção posterior acontece sobre esse snapshot — não sobre a VM morta.
 
-Após o snapshot, a VM segue o ciclo normal de `BELA_PANIC` descrito em `[../capi/embedding.md](../capi/embedding.md)`: apenas `bela_vm_free` é chamada sobre ela. O usuário inspeciona o snapshot; ao encerrar a sessão, a VM é liberada.
+Após o snapshot, a VM segue o ciclo normal de `BELA_PANIC` descrito em [../capi/embedding.md](../capi/embedding.md): apenas `bela_vm_free` é chamada sobre ela. O usuário inspeciona o snapshot; ao encerrar a sessão, a VM é liberada.
 
 Sequência:
 
