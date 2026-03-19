@@ -41,7 +41,7 @@ Sempre disponível: após `from io use`, o LSP sugere os símbolos exportados pe
 
 ## Itens Futuros
 
-> **TBD:** Parser tolerante a erros — modo lenient para parsear código incompleto sem abortar análise. Opções: (a) modo "lenient" no mesmo parser, (b) parser separado para LSP. Será definido antes da implementação.
+> **RESOLVIDO:** Parser tolerante a erros — decisão em `docs/superpowers/specs/2026-03-18-compilation-frontend-design.md`. A estratégia adotada é error nodes + pontos de sincronização no parser compartilhado (opção a), com tokens de trivia emitidos em modo LSP. Nenhum parser separado.
 
 > **TBD:** Module resolution — protocolo para resolver `from stdlib`, `from dependência externa` (via `bela.toml`) e `from módulo local`. LSP e package manager precisam ser co-designed. Será definido antes da implementação.
 
