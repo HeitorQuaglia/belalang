@@ -46,6 +46,8 @@ bela_dap_stop(vm);
 bela_vm_free(vm);
 ```
 
+Para o ciclo de vida completo da VM, ver [embedding.md](../capi/embedding.md).
+
 > **TBD:** Assinaturas exatas de `bela_dap_start` e `bela_dap_stop` — a C API do `bela-dev.a` ainda não está especificada. Será definido antes da implementação.
 
 ---
