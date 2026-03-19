@@ -117,7 +117,7 @@ Resources são views somente-leitura acessíveis via URI sem invocar uma tool.
 
 - Bind exclusivo em `127.0.0.1` — sem binding em `0.0.0.0` ou interfaces externas
 - Sem autenticação — localhost é o único controle de acesso
-- `bela_mcp_start` retorna `BELA_ERROR` se detectar tentativa de bind fora de localhost ou se a porta estiver em uso
+- `bela_mcp_start` retorna `BELA_ERROR` se o DAP não estiver ativo, se a porta estiver em uso ou se detectar tentativa de bind fora de localhost
 - Não presente em `bela-vm.a` — só em `bela-mcp.a`, que o host linka explicitamente
 
 > **⚠ Atenção:** `bela-mcp.a` não deve ser linkada em builds de produção. Expor o MCP server em redes não-locais representa acesso irrestrito à VM em execução.
