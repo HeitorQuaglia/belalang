@@ -11,8 +11,6 @@ A convenção de nomenclatura permite que o debugger (ver [debugger.md](debugger
 - `game.bela` → `game.belc` + `game.belmap` (mesmo diretório, mesmo nome base)
 - O debugger busca o `.belmap` por esta convenção no `launch`/`attach`
 
-Se não encontrar o arquivo, o debugger prossegue sem source map — stack traces mostrarão offsets de bytecode em vez de linhas do código-fonte.
-
 ---
 
 ## Estrutura
@@ -54,5 +52,5 @@ Cada `Entry` relaciona uma posição no bytecode a uma localização no arquivo-
 
 ## Itens em Aberto
 
-> **TBD:** Campos adicionais do `.belmap` (nomes de variáveis para inline hints, scope boundaries). Será definido antes da implementação. O compilador produz o `.belmap` junto com o `.belc` (ver [bytecode.md](bytecode.md) para contexto sobre a cadeia de compilação).
+> **TBD:** Campos adicionais do `.belmap` (nomes de variáveis para inline hints, scope boundaries). Será definido antes da implementação.
 
