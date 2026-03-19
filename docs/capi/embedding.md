@@ -195,7 +195,11 @@ if (status == BELA_PANIC) {
 ### bela_vm_last_error
 
 > **TBD:** Retorna detalhes do último erro da VM (mensagem de texto). Assinatura e
-> ownership da string a definir. Será definido antes da implementação.
+> ownership da string a definir.
+>
+> **Nota:** Os exemplos neste documento chamam `bela_vm_last_error(vm)` assumindo retorno `const char *` — esta é a assinatura provável, mas ownership e tempo de vida da string estão pendentes de decisão.
+>
+> Será definido antes da implementação.
 
 ---
 
