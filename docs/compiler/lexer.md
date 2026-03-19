@@ -54,6 +54,7 @@ O comprimento de cada token é derivado do offset do token seguinte: `source[tok
 | `kw_type` | `type` |
 | `kw_override` | `override` |
 | `kw_abstract` | `abstract` |
+| `kw_val` | `val` |
 | `kw_static` | `static` |
 | `kw_this` | `this` |
 | `kw_super` | `super` |
@@ -169,6 +170,8 @@ string_literal_part   → " itens"
 ```
 
 > **Nota:** Os rótulos acima são ilustrativos. Os tokens não carregam payload — o texto de cada token é sempre recuperado via `source[token.start..next_token.start]`.
+
+> **Nota — Lexer stateful durante interpolações:** O Lexer mantém um contador de profundidade de interpolação. Ao emitir `interp_expr_begin` (`${`), entra em modo de interpolação e passa a emitir `interp_expr_end` em vez de `r_brace` para o `}` de fechamento correspondente. Fora desse modo (i.e., em qualquer outro contexto), `}` é sempre emitido como `r_brace`. Isso garante que os dois tokens — `r_brace` e `interp_expr_end` — nunca sejam ambíguos para o Parser.
 
 ### Strings Multi-linha
 
