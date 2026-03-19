@@ -43,7 +43,7 @@ Cada `Entry` relaciona uma posição no bytecode a uma localização no arquivo-
 
 ## Comportamento por Presença do `.belmap`
 
-| Situação | Stack traces e mensagens de erro |
+| Situação | Stack traces e breakpoints |
 |----------|----------------------------------|
 | **Sem `.belmap`** | Mostram offset de bytecode — `game.belc:0x00A4` |
 | **Com `.belmap`** | Mostram localização no source — `game.bela:42:7` |
