@@ -28,7 +28,7 @@ O debugger implementa o Debug Adapter Protocol (DAP) via TCP. É v2 — depende 
 
 ## Custom Requests
 
-DAP padrão cobre breakpoints, stepping, `stackTrace`, `scopes`, `variables` e `evaluate`. Os `customRequests` cobrem o que é Bela-específico.
+DAP padrão cobre breakpoints, stepping, `stackTrace`, `scopes`, `variables`, `evaluate` e `setVariable`. Os `customRequests` cobrem o que é Bela-específico.
 
 ### `bela/inspect` — RC Inspection
 
